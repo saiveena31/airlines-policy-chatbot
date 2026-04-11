@@ -1,0 +1,10 @@
+streamlit
+langchain
+langchain-community
+sentence-transformers
+faiss-cpu
+huggingface-hub
+pypdf
+transformers
+torch
+requests
