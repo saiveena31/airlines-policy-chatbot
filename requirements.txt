@@ -8,3 +8,5 @@ pypdf
 transformers
 torch
 requests
+langchain-groq
+langchain-text-splitters
