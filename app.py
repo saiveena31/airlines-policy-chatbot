@@ -17,19 +17,19 @@ st.set_page_config(
 )
 
 @st.cache_resource
-def load_vectorstore(pdf_path: str):
-    reader = PdfReader(pdf_path)
-    raw_text = ""
-    for page in reader.pages:
-        text = page.extract_text()
-        if text:
-            raw_text += text
-
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50
+def load_vectorstore():
+    pdf_path = hf_hub_download(
+        repo_id="saiveena/airlines-chatbot",   # your dataset repo
+        filename="Dataset - Flykite Airlines_ HRP.pdf",  # exact filename
+        repo_type="dataset"
     )
+
+    reader = PdfReader(pdf_path)
+    raw_text = "".join([page.extract_text() or "" for page in reader.pages])
+
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     documents = splitter.create_documents([raw_text])
+
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     vectorstore = FAISS.from_documents(documents, embeddings)
     return vectorstore
@@ -52,7 +52,7 @@ def main():
 
     with st.spinner("Loading knowledge base..."):
         # NOTE: replace with your actual PDF path or Hugging Face download logic
-        vectorstore = load_vectorstore("deployment/data/Dataset - Flykite Airlines_ HRP.pdf")
+        vectorstore = load_vectorstore()
         llm = load_llm()
 
     query = st.text_input("Enter your HR policy question:", placeholder="e.g., What is the bereavement leave policy?")
