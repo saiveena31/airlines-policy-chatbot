@@ -87,9 +87,7 @@ def main():
 
         with st.spinner("Searching policy documents..."):
             docs = vectorstore.similarity_search(query, k=3)
-            context = "
-
-".join([doc.page_content for doc in docs])
+            context = "".join([doc.page_content for doc in docs])
 
             prompt = f"""
 You are an HR policy assistant for an airline company.
@@ -104,7 +102,7 @@ Question:
 
 Answer:
 """
-            response = llm.predict(prompt)
+            response = llm.invoke(prompt)
 
         st.subheader("Answer")
         st.write(response)
