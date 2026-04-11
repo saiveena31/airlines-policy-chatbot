@@ -1,7 +1,9 @@
+# deployment/app.py
 import os
 import warnings
 import streamlit as st
 
+from huggingface_hub import hf_hub_download
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
@@ -10,17 +12,24 @@ from langchain_groq import ChatGroq
 
 warnings.filterwarnings("ignore")
 
+# --------------------------------------------------
+# Streamlit page config
+# --------------------------------------------------
 st.set_page_config(
     page_title="Airlines HR Policy Q&A Bot",
     page_icon="✈️",
     layout="wide"
 )
 
+# --------------------------------------------------
+# Cache: Load PDF + Build Vector Store
+# --------------------------------------------------
 @st.cache_resource
 def load_vectorstore():
+    # Download PDF from Hugging Face dataset repo
     pdf_path = hf_hub_download(
-        repo_id="saiveena/airlines-chatbot",   # your dataset repo
-        filename="Dataset - Flykite Airlines_ HRP.pdf",  # exact filename
+        repo_id="saiveena/airlines-chatbot",   # replace with your dataset repo
+        filename="Dataset - Flykite Airlines_ HRP.pdf",
         repo_type="dataset"
     )
 
@@ -34,6 +43,9 @@ def load_vectorstore():
     vectorstore = FAISS.from_documents(documents, embeddings)
     return vectorstore
 
+# --------------------------------------------------
+# Cache: Load LLM
+# --------------------------------------------------
 @st.cache_resource
 def load_llm():
     return ChatGroq(
@@ -42,28 +54,45 @@ def load_llm():
         api_key=os.getenv("GROQ_API_KEY")
     )
 
+# --------------------------------------------------
+# Main App Logic
+# --------------------------------------------------
 def main():
     st.title("✈️ Airlines HR Policy Q&A Bot")
-    st.write("Ask questions about **Flykite Airlines HR Policies** using Retrieval-Augmented Generation (RAG).")
+    st.write(
+        "Ask questions about **Flykite Airlines HR Policies**. "
+        "Answers are generated using Retrieval-Augmented Generation (RAG)."
+    )
 
+    # Validate API Key
     if not os.getenv("GROQ_API_KEY"):
-        st.error("GROQ_API_KEY not set. Please export it before running the app.")
+        st.error("GROQ_API_KEY not set. Please add it in Streamlit Cloud secrets.")
         st.stop()
 
+    # Load resources
     with st.spinner("Loading knowledge base..."):
-        # NOTE: replace with your actual PDF path or Hugging Face download logic
         vectorstore = load_vectorstore()
         llm = load_llm()
 
-    query = st.text_input("Enter your HR policy question:", placeholder="e.g., What is the bereavement leave policy?")
+    # User input
+    query = st.text_input(
+        "Enter your HR policy question:",
+        placeholder="e.g., What is the bereavement leave policy?"
+    )
+
     if st.button("Get Answer"):
         if not query.strip():
             st.warning("Please enter a valid question.")
             return
+
         with st.spinner("Searching policy documents..."):
             docs = vectorstore.similarity_search(query, k=3)
-            context = "\n\n".join([doc.page_content for doc in docs])
-            prompt = f"""You are an HR policy assistant for an airline company.
+            context = "
+
+".join([doc.page_content for doc in docs])
+
+            prompt = f"""
+You are an HR policy assistant for an airline company.
 Answer the question strictly using the context below.
 If the answer is not available, say "Not specified in the policy."
 
@@ -79,10 +108,15 @@ Answer:
 
         st.subheader("Answer")
         st.write(response)
+
         with st.expander("📄 Retrieved Policy Context"):
             for i, doc in enumerate(docs, start=1):
                 st.markdown(f"**Source {i}:**")
                 st.write(doc.page_content)
 
+# --------------------------------------------------
+# Entry Point
+# --------------------------------------------------
 if __name__ == "__main__":
     main()
+
